@@ -1,0 +1,302 @@
+"use client";
+
+import { useEffect, useState, ChangeEvent } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import Image from "next/image";
+import { Upload } from "lucide-react";
+
+interface ProfileDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onUpdate: (updatedData: {
+    name: string | null;
+    avatar_url: string | null;
+  }) => void;
+}
+
+interface HRData {
+  id: string;
+  name: string | null;
+  email: string;
+  role: "admin" | "hr";
+  avatar_url: string | null;
+  position?: string | null;
+  bio?: string | null;
+  skills?: string[] | null;
+  linkedin?: string | null;
+  github?: string | null;
+  website?: string | null;
+}
+
+export default function ProfileDialog({
+  open,
+  onClose,
+  onUpdate,
+}: ProfileDialogProps) {
+  const [hr, setHR] = useState<HRData | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [bioWordCount, setBioWordCount] = useState(0);
+  const [skillInput, setSkillInput] = useState("");
+
+  // ✅ Fetch HR data dari Supabase
+  useEffect(() => {
+    if (!open) return;
+    const fetchHR = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("hr_users")
+        .select(
+          "id, name, email, role, avatar_url, position, bio, skills, linkedin, github, website"
+        )
+        .eq("email", user.email)
+        .single();
+
+      if (!error) {
+        setHR(data);
+        setSkillInput(data.skills ? data.skills.join(", ") : "");
+        setBioWordCount(
+          data.bio ? data.bio.split(/\s+/).filter(Boolean).length : 0
+        );
+      }
+    };
+    fetchHR();
+  }, [open]);
+
+  const handleUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setFile(e.target.files[0]);
+    }
+  };
+
+  // ✅ Simpan perubahan ke Supabase
+  const handleSave = async () => {
+    if (!hr) return;
+    setLoading(true);
+
+    try {
+      let avatarUrl = hr.avatar_url;
+
+      if (file) {
+        const filePath = `avatars/${hr.id}-${Date.now()}.png`;
+        const { error: uploadError } = await supabase.storage
+          .from("avatars")
+          .upload(filePath, file, { upsert: true });
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from("avatars")
+          .getPublicUrl(filePath);
+        avatarUrl = urlData.publicUrl;
+      }
+
+      const { error } = await supabase
+        .from("hr_users")
+        .update({
+          name: hr.name,
+          avatar_url: avatarUrl,
+          position: hr.position,
+          bio: hr.bio,
+          skills: hr.skills,
+          linkedin: hr.linkedin,
+          github: hr.github,
+          website: hr.website,
+        })
+        .eq("id", hr.id);
+
+      if (error) throw error;
+
+      onUpdate({ name: hr.name, avatar_url: avatarUrl });
+      alert("✅ Profile updated successfully!");
+      onClose();
+    } catch (err) {
+      console.error("Error updating profile:", err);
+      alert("❌ Failed to update profile");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!hr) return null;
+
+  const isEditable = hr.role === "admin" || hr.role === "hr";
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 p-6">
+        <DialogHeader>
+          <DialogTitle>Profile Information</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5 pb-4">
+          {/* Avatar Upload */}
+          <div className="flex items-center gap-4">
+            <div className="relative w-16 h-16 rounded-full overflow-hidden border border-gray-300 dark:border-gray-700">
+              <Image
+                src={
+                  file
+                    ? URL.createObjectURL(file)
+                    : hr.avatar_url || "/default-avatar.png"
+                }
+                alt="Avatar"
+                fill
+                className="object-cover"
+              />
+            </div>
+            {isEditable && (
+              <label
+                htmlFor="avatar-upload"
+                className="flex items-center gap-2 text-sm text-indigo-600 cursor-pointer hover:underline"
+              >
+                <Upload className="h-4 w-4" /> Change Photo
+                <input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleUpload}
+                />
+              </label>
+            )}
+          </div>
+
+          {/* Name */}
+          <div>
+            <Label>Name</Label>
+            <Input
+              type="text"
+              value={hr.name || ""}
+              disabled={!isEditable}
+              onChange={(e) => setHR({ ...hr, name: e.target.value })}
+            />
+          </div>
+
+          {/* Email & Role */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Email</Label>
+              <Input type="email" value={hr.email} disabled />
+            </div>
+            <div>
+              <Label>Role</Label>
+              <Input type="text" value={hr.role} disabled />
+            </div>
+          </div>
+
+          {/* Position */}
+          <div>
+            <Label>Position</Label>
+            <Input
+              type="text"
+              value={hr.position || ""}
+              disabled={!isEditable}
+              onChange={(e) => setHR({ ...hr, position: e.target.value })}
+            />
+          </div>
+
+          {/* Bio */}
+          <div>
+            <div className="flex justify-between items-center">
+              <Label>Bio</Label>
+              <span
+                className={`text-xs ${
+                  bioWordCount > 75 ? "text-red-500" : "text-gray-400"
+                }`}
+              >
+                {bioWordCount}/75 kata
+              </span>
+            </div>
+            <Textarea
+              rows={3}
+              className="resize-none"
+              disabled={!isEditable}
+              value={hr.bio || ""}
+              onChange={(e) => {
+                const words = e.target.value.split(/\s+/).filter(Boolean);
+                if (words.length <= 75) {
+                  setHR({ ...hr, bio: e.target.value });
+                  setBioWordCount(words.length);
+                }
+              }}
+            />
+          </div>
+
+          {/* Skills */}
+          <div>
+            <Label>Skills (pisahkan dengan koma)</Label>
+            <Input
+              type="text"
+              value={skillInput}
+              disabled={!isEditable}
+              placeholder="Contoh: HTML, CSS, React"
+              onChange={(e) => {
+                const text = e.target.value;
+                setSkillInput(text);
+
+                const arr = text
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean);
+                setHR({ ...hr, skills: arr });
+              }}
+            />
+          </div>
+
+          {/* Links */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>LinkedIn</Label>
+              <Input
+                type="text"
+                value={hr.linkedin || ""}
+                disabled={!isEditable}
+                onChange={(e) => setHR({ ...hr, linkedin: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>GitHub</Label>
+              <Input
+                type="text"
+                value={hr.github || ""}
+                disabled={!isEditable}
+                onChange={(e) => setHR({ ...hr, github: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label>Website</Label>
+            <Input
+              type="text"
+              value={hr.website || ""}
+              disabled={!isEditable}
+              onChange={(e) => setHR({ ...hr, website: e.target.value })}
+            />
+          </div>
+
+          <Button
+            className="w-full mt-2"
+            onClick={handleSave}
+            disabled={loading}
+          >
+            {loading ? "Saving..." : "Save Changes"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
