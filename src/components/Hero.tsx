@@ -24,10 +24,8 @@ export default function Hero() {
 
       <Reveal delay={0.4}>
         <div className="mt-10 flex flex-col sm:flex-row gap-4">
-          {/* ✅ Tombol HR (modal auth) */}
           <AuthDialog />
 
-          {/* ✅ Tombol kandidat (link langsung) */}
           <Link href="/jobs" passHref>
             <Button
               size="lg"

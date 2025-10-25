@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import Image from "next/image";
 
-interface Company {
+interface CompanyProfile {
   id: string;
   name: string;
   logo_url: string | null;
@@ -29,39 +29,23 @@ interface Company {
 
 export default function CompanyDashboardPage() {
   const [openEdit, setOpenEdit] = useState(false);
-  const [company, setCompany] = useState<Company | null>(null);
+  const [company, setCompany] = useState<CompanyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [file, setFile] = useState<File | null>(null);
 
-  /* ============================
-     ✅ Fetch Company by HR Login
-  ============================= */
+  /* ===================================================
+     ✅ Fetch Company Profile (single company system)
+  =================================================== */
   const fetchCompany = async () => {
     try {
       setLoading(true);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: hr, error: hrError } = await supabase
-        .from("hr_users")
-        .select("company_id")
-        .eq("email", user.email)
-        .single();
-
-      if (hrError || !hr?.company_id) {
-        console.warn("HR tidak punya company_id");
-        return;
-      }
-
       const { data, error } = await supabase
-        .from("companies")
+        .from("company_profile")
         .select(
           "id, name, logo_url, industry, location, website, team_size, about"
         )
-        .eq("id", hr.company_id)
+        .limit(1)
         .single();
 
       if (error) throw error;
@@ -77,9 +61,9 @@ export default function CompanyDashboardPage() {
     void fetchCompany();
   }, []);
 
-  /* ============================
+  /* ===================================================
      ✅ Update Company Profile
-  ============================= */
+  =================================================== */
   const handleSave = async () => {
     if (!company) return;
 
@@ -103,7 +87,7 @@ export default function CompanyDashboardPage() {
       }
 
       const { error } = await supabase
-        .from("companies")
+        .from("company_profile")
         .update({
           name: company.name,
           industry: company.industry,
@@ -127,11 +111,48 @@ export default function CompanyDashboardPage() {
     }
   };
 
-  /* ============================
+  /* ===================================================
+     ✅ Create Default Company if Empty
+  =================================================== */
+  const createDefaultCompany = async () => {
+    try {
+      const { error } = await supabase.from("company_profile").insert({
+        name: "NextStep HR",
+        industry: "HR Automation",
+        location: "Jakarta, Indonesia",
+        website: "https://nextstep.richardoo.cyou",
+        team_size: "10-20",
+        about:
+          "NextStep2 helps automate your HR and recruitment processes with AI-powered workflows.",
+        logo_url: null,
+      });
+
+      if (error) throw error;
+
+      alert("✅ Default company profile created!");
+      await fetchCompany();
+    } catch (err) {
+      console.error("Error creating default company:", err);
+    }
+  };
+
+  /* ===================================================
      🧱 Render UI
-  ============================= */
-  if (loading) return <p>Loading company data...</p>;
-  if (!company) return <p>No company data found.</p>;
+  =================================================== */
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-screen text-gray-500">
+        Loading company data...
+      </div>
+    );
+
+  if (!company)
+    return (
+      <div className="flex flex-col items-center justify-center h-screen text-gray-500 space-y-3">
+        <p>No company profile found.</p>
+        <Button onClick={createDefaultCompany}>Create Default Company</Button>
+      </div>
+    );
 
   return (
     <div className="space-y-8">
@@ -169,7 +190,7 @@ export default function CompanyDashboardPage() {
             </p>
             <div className="flex flex-wrap gap-3 mt-3 text-sm text-gray-600 dark:text-gray-300">
               <span className="flex items-center gap-1">
-                <MapPin className="h-4 w-4" /> {company.location}
+                <MapPin className="h-4 w-4" /> {company.location || "—"}
               </span>
               <span className="flex items-center gap-1">
                 <Globe className="h-4 w-4" />

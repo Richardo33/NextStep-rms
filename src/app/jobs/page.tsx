@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -18,8 +19,8 @@ import Link from "next/link";
 
 type Company = {
   name: string | null;
-  location?: string | null;
-  logo_url?: string | null;
+  location: string | null;
+  logo_url: string | null;
 };
 
 type Job = {
@@ -32,19 +33,9 @@ type Job = {
   company: Company | null;
 };
 
-// ✅ Sesuaikan tipe hasil Supabase sebelum mapping
-interface SupabaseJob {
-  id: string;
-  title: string;
-  employment_type: string | null;
-  experience: string | null;
-  description: string | null;
-  status: string;
-  companies: Company | null;
-}
-
 export default function PublicJobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [type, setType] = useState("all");
@@ -53,45 +44,35 @@ export default function PublicJobsPage() {
     const fetchJobs = async () => {
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from("jobs")
-        .select(
-          `
-          id,
-          title,
-          employment_type,
-          experience,
-          description,
-          status,
-          companies (name, location, logo_url)
-        `
-        )
-        .eq("status", "open");
+      try {
+        const { data: companyData } = await supabase
+          .from("company_profile")
+          .select("name, location, logo_url")
+          .limit(1)
+          .single();
 
-      if (error) {
-        console.error("❌ Error fetching jobs:", error);
+        setCompany(companyData || null);
+
+        // Fetch open jobs
+        const { data, error } = await supabase
+          .from("jobs")
+          .select("id, title, employment_type, experience, description, status")
+          .eq("status", "open")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        const formatted: Job[] = (data || []).map((job) => ({
+          ...job,
+          company: companyData || null,
+        }));
+
+        setJobs(formatted);
+      } catch (err) {
+        console.error("❌ Error fetching jobs:", err);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const formatted: Job[] = (data as unknown as SupabaseJob[]).map(
-        (job) => ({
-          id: job.id,
-          title: job.title,
-          employment_type: job.employment_type,
-          experience: job.experience,
-          description: job.description,
-          status: job.status,
-          company: job.companies || {
-            name: null,
-            location: null,
-            logo_url: null,
-          },
-        })
-      );
-
-      setJobs(formatted);
-      setLoading(false);
     };
 
     fetchJobs();
@@ -142,7 +123,6 @@ export default function PublicJobsPage() {
               <SelectItem value="Full-time">Full-time</SelectItem>
               <SelectItem value="Part-time">Part-time</SelectItem>
               <SelectItem value="Internship">Internship</SelectItem>
-              <SelectItem value="Remote">Remote</SelectItem>
               <SelectItem value="Contract">Contract</SelectItem>
             </SelectContent>
           </Select>
@@ -184,7 +164,7 @@ export default function PublicJobsPage() {
                           {job.title}
                         </CardTitle>
                         <p className="text-sm text-gray-500">
-                          {job.company?.name || "Unknown Company"}
+                          {job.company?.name || "Our Company"}
                           {job.company?.location
                             ? ` — ${job.company.location}`
                             : ""}

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -34,6 +33,7 @@ export default function DashboardLayout({
     email: string;
     role: string | null;
     avatar_url: string | null;
+    approved: boolean;
   } | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -54,20 +54,26 @@ export default function DashboardLayout({
         return;
       }
 
-      // ambil data HR berdasarkan auth.email
       const { data: hrData, error } = await supabase
         .from("hr_users")
-        .select("id, name, email, role, avatar_url")
-        .ilike("email", user.email!) // pakai ilike biar gak sensitif huruf besar/kecil
-        .single();
+        .select("id, name, email, role, avatar_url, approved")
+        .eq("email", user.email)
+        .maybeSingle();
 
-      if (!error && hrData) {
-        setHR(hrData);
-        setRole(hrData.role || null);
-      } else {
-        console.warn("❌ HR data not found for", user.email);
+      if (error || !hrData) {
+        console.warn("❌ HR record not found for", user.email);
+        await supabase.auth.signOut();
+        router.push("/");
+        return;
       }
 
+      if (!hrData.approved) {
+        router.push("/pending-approval");
+        return;
+      }
+
+      setHR(hrData);
+      setRole(hrData.role as "admin" | "hr");
       setLoading(false);
     };
 
@@ -103,13 +109,20 @@ export default function DashboardLayout({
     );
   }
 
-  const links = [
+  /* 🔗 Dynamic sidebar links */
+  const baseLinks = [
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
     { href: "/dashboard/jobs", label: "Jobs", icon: Briefcase },
     { href: "/dashboard/candidates", label: "Candidates", icon: Users },
+  ];
+
+  const adminLinks = [
+    ...baseLinks,
     { href: "/dashboard/team", label: "Team", icon: Users },
     { href: "/dashboard/company", label: "Company", icon: Building2 },
   ];
+
+  const links = role === "admin" ? adminLinks : baseLinks;
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100">
@@ -178,7 +191,7 @@ export default function DashboardLayout({
                   className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   onClick={() => {
                     setDropdownOpen(false);
-                    setOpenProfile(true); // ✅ buka modal profil
+                    setOpenProfile(true);
                   }}
                 >
                   <User className="h-4 w-4" /> Profile
@@ -197,7 +210,7 @@ export default function DashboardLayout({
         {/* Content */}
         <div className="min-h-screen p-6 md:p-8">{children}</div>
 
-        {/* ✅ Modal Profil */}
+        {/* Profile Modal */}
         <ProfileDialog
           open={openProfile}
           onClose={() => setOpenProfile(false)}

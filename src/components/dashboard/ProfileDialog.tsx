@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import Image from "next/image";
 import { Upload } from "lucide-react";
+import Swal from "sweetalert2";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 interface ProfileDialogProps {
   open: boolean;
@@ -49,13 +51,13 @@ export default function ProfileDialog({
   const [bioWordCount, setBioWordCount] = useState(0);
   const [skillInput, setSkillInput] = useState("");
 
-  // ✅ Fetch HR data dari Supabase
+  // ✅ Fetch HR data
   useEffect(() => {
     if (!open) return;
+
     const fetchHR = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
       if (!user) return;
 
       const { data, error } = await supabase
@@ -64,26 +66,31 @@ export default function ProfileDialog({
           "id, name, email, role, avatar_url, position, bio, skills, linkedin, github, website"
         )
         .eq("email", user.email)
-        .single();
+        .maybeSingle();
 
-      if (!error) {
+      if (error) {
+        console.error("Error fetching HR:", error);
+        return;
+      }
+
+      if (data) {
         setHR(data);
-        setSkillInput(data.skills ? data.skills.join(", ") : "");
+        setSkillInput(Array.isArray(data.skills) ? data.skills.join(", ") : "");
         setBioWordCount(
           data.bio ? data.bio.split(/\s+/).filter(Boolean).length : 0
         );
       }
     };
+
     fetchHR();
   }, [open]);
 
   const handleUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
-    }
+    const selected = e.target.files?.[0];
+    if (selected) setFile(selected);
   };
 
-  // ✅ Simpan perubahan ke Supabase
+  // ✅ Save profile updates
   const handleSave = async () => {
     if (!hr) return;
     setLoading(true);
@@ -121,17 +128,43 @@ export default function ProfileDialog({
       if (error) throw error;
 
       onUpdate({ name: hr.name, avatar_url: avatarUrl });
-      alert("✅ Profile updated successfully!");
+
+      await Swal.fire({
+        icon: "success",
+        title: "Profile Updated!",
+        text: "Your profile has been updated successfully.",
+        confirmButtonColor: "#4f46e5",
+      });
+
       onClose();
     } catch (err) {
       console.error("Error updating profile:", err);
-      alert("❌ Failed to update profile");
+      await Swal.fire({
+        icon: "error",
+        title: "Update Failed",
+        text: "There was an error updating your profile. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  if (!hr) return null;
+  // ✅ Loading state (dengan hidden title biar gak error Radix)
+  if (!hr)
+    return (
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent>
+          <DialogHeader>
+            <VisuallyHidden>
+              <DialogTitle>Loading Profile</DialogTitle>
+            </VisuallyHidden>
+          </DialogHeader>
+          <p className="text-center text-gray-500 py-4">
+            Loading profile data...
+          </p>
+        </DialogContent>
+      </Dialog>
+    );
 
   const isEditable = hr.role === "admin" || hr.role === "hr";
 
@@ -181,7 +214,11 @@ export default function ProfileDialog({
               type="text"
               value={hr.name || ""}
               disabled={!isEditable}
-              onChange={(e) => setHR({ ...hr, name: e.target.value })}
+              onChange={(e) =>
+                setHR((prev) =>
+                  prev ? { ...prev, name: e.target.value } : prev
+                )
+              }
             />
           </div>
 
@@ -204,7 +241,11 @@ export default function ProfileDialog({
               type="text"
               value={hr.position || ""}
               disabled={!isEditable}
-              onChange={(e) => setHR({ ...hr, position: e.target.value })}
+              onChange={(e) =>
+                setHR((prev) =>
+                  prev ? { ...prev, position: e.target.value } : prev
+                )
+              }
             />
           </div>
 
@@ -217,7 +258,7 @@ export default function ProfileDialog({
                   bioWordCount > 75 ? "text-red-500" : "text-gray-400"
                 }`}
               >
-                {bioWordCount}/75 kata
+                {bioWordCount}/75 words
               </span>
             </div>
             <Textarea
@@ -226,9 +267,10 @@ export default function ProfileDialog({
               disabled={!isEditable}
               value={hr.bio || ""}
               onChange={(e) => {
-                const words = e.target.value.split(/\s+/).filter(Boolean);
+                const text = e.target.value;
+                const words = text.split(/\s+/).filter(Boolean);
                 if (words.length <= 75) {
-                  setHR({ ...hr, bio: e.target.value });
+                  setHR((prev) => (prev ? { ...prev, bio: text } : prev));
                   setBioWordCount(words.length);
                 }
               }}
@@ -237,21 +279,20 @@ export default function ProfileDialog({
 
           {/* Skills */}
           <div>
-            <Label>Skills (pisahkan dengan koma)</Label>
+            <Label>Skills (comma separated)</Label>
             <Input
               type="text"
               value={skillInput}
               disabled={!isEditable}
-              placeholder="Contoh: HTML, CSS, React"
+              placeholder="e.g., HTML, CSS, React"
               onChange={(e) => {
                 const text = e.target.value;
                 setSkillInput(text);
-
                 const arr = text
                   .split(",")
                   .map((s) => s.trim())
                   .filter(Boolean);
-                setHR({ ...hr, skills: arr });
+                setHR((prev) => (prev ? { ...prev, skills: arr } : prev));
               }}
             />
           </div>
@@ -264,7 +305,11 @@ export default function ProfileDialog({
                 type="text"
                 value={hr.linkedin || ""}
                 disabled={!isEditable}
-                onChange={(e) => setHR({ ...hr, linkedin: e.target.value })}
+                onChange={(e) =>
+                  setHR((prev) =>
+                    prev ? { ...prev, linkedin: e.target.value } : prev
+                  )
+                }
               />
             </div>
             <div>
@@ -273,18 +318,27 @@ export default function ProfileDialog({
                 type="text"
                 value={hr.github || ""}
                 disabled={!isEditable}
-                onChange={(e) => setHR({ ...hr, github: e.target.value })}
+                onChange={(e) =>
+                  setHR((prev) =>
+                    prev ? { ...prev, github: e.target.value } : prev
+                  )
+                }
               />
             </div>
           </div>
 
+          {/* Website */}
           <div>
             <Label>Website</Label>
             <Input
               type="text"
               value={hr.website || ""}
               disabled={!isEditable}
-              onChange={(e) => setHR({ ...hr, website: e.target.value })}
+              onChange={(e) =>
+                setHR((prev) =>
+                  prev ? { ...prev, website: e.target.value } : prev
+                )
+              }
             />
           </div>
 

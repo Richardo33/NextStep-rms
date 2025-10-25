@@ -128,3 +128,15 @@
     scrollbar-width: none !important;
   }
 }
+
+.swal2-container {
+  z-index: 99999 !important;
+}
+
+.swal2-container.swal2-backdrop-show {
+  pointer-events: all !important;
+}
+
+body.swal2-shown *:not(.swal2-container):not(.swal2-container *) {
+  pointer-events: none !important;
+}

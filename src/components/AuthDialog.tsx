@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import Swal from "sweetalert2";
+import withReactContent from "sweetalert2-react-content";
 import {
   Dialog,
   DialogContent,
@@ -14,140 +16,176 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+
+const MySwal = withReactContent(Swal);
 
 export default function AuthDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [registerType, setRegisterType] = useState<"new" | "join">("new");
-  const [companies, setCompanies] = useState<{ id: string; name: string }[]>(
-    []
-  );
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
-    company: "",
-    company_id: "",
   });
-
-  // Fetch list company (for join mode)
-  useEffect(() => {
-    if (!isLogin) {
-      supabase
-        .from("companies")
-        .select("id, name")
-        .then(({ data, error }) => {
-          if (!error && data) setCompanies(data);
-        });
-    }
-  }, [isLogin]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const showAlert = async (
+    icon: "success" | "error" | "info" | "warning",
+    title: string,
+    text: string
+  ) => {
+    await MySwal.fire({
+      icon,
+      title,
+      text,
+      background: "#fff",
+      confirmButtonColor: icon === "error" ? "#EF4444" : "#6366F1",
+      customClass: {
+        popup: "!z-[9999]",
+      },
+      didOpen: () => {
+        const popup = Swal.getPopup();
+        if (popup) popup.onclick = (e) => e.stopPropagation();
+      },
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
-    if (isLogin) {
-      // LOGIN =====================================================
-      const { error } = await supabase.auth.signInWithPassword({
-        email: form.email,
-        password: form.password,
-      });
+    try {
+      if (isLogin) {
+        // ===================== LOGIN =====================
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: form.email,
+          password: form.password,
+        });
 
-      if (error) setError(error.message);
-      else {
+        if (signInError) throw new Error(signInError.message || "Login failed");
+
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError || !user) throw new Error("Failed to get user session.");
+
+        const { data: hr, error: hrError } = await supabase
+          .from("hr_users")
+          .select("approved, role, name")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (hrError) throw new Error(hrError.message || "Query failed.");
+        if (!hr) throw new Error("Account not found in HR records.");
+
+        if (!hr.approved) {
+          await showAlert(
+            "info",
+            "Awaiting Approval",
+            "Your account has been created but is still pending admin approval."
+          );
+          return;
+        }
+
+        await MySwal.fire({
+          icon: "success",
+          title: `Welcome back, ${hr.name || "HR"}!`,
+          text: "Redirecting to your dashboard...",
+          timer: 1800,
+          showConfirmButton: false,
+          background: "#fff",
+          customClass: { popup: "!z-[9999]" },
+        });
+
+        setOpen(false);
+        router.push("/dashboard");
+      } else {
+        // ===================== REGISTER =====================
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: form.email,
+          password: form.password,
+          options: { data: { full_name: form.name } },
+        });
+
+        if (signUpError) {
+          if (signUpError.message.includes("already registered"))
+            throw new Error("This email is already registered.");
+          throw new Error(signUpError.message || "Registration failed.");
+        }
+
+        // Tunggu trigger create_hr_user_on_signup jalan
+        await new Promise((r) => setTimeout(r, 1000));
+
+        const { error: autoLoginError } =
+          await supabase.auth.signInWithPassword({
+            email: form.email,
+            password: form.password,
+          });
+
+        if (autoLoginError)
+          throw new Error(autoLoginError.message || "Auto-login failed.");
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) throw new Error("Failed to retrieve user session.");
+
+        const { data: hr } = await supabase
+          .from("hr_users")
+          .select("approved, role, name")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (!hr) {
+          await showAlert(
+            "warning",
+            "Almost there!",
+            "Your account was created, but the system may take a few seconds to sync. Try logging in again shortly."
+          );
+          return;
+        }
+
+        if (!hr.approved) {
+          await showAlert(
+            "info",
+            "Registration Successful!",
+            "Your account has been created but is pending admin approval."
+          );
+          setIsLogin(true);
+          return;
+        }
+
+        await MySwal.fire({
+          icon: "success",
+          title: `Welcome, ${hr.name || "Admin"}!`,
+          text: "Redirecting to dashboard...",
+          timer: 1800,
+          showConfirmButton: false,
+          background: "#fff",
+          customClass: { popup: "!z-[9999]" },
+        });
+
         setOpen(false);
         router.push("/dashboard");
       }
+    } catch (err: unknown) {
+      console.error("Auth error:", err);
 
-      setLoading(false);
-      return;
-    }
-
-    // REGISTER ==================================================
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp(
-      {
-        email: form.email,
-        password: form.password,
-      }
-    );
-
-    if (signUpError) {
-      setError(signUpError.message);
-      setLoading(false);
-      return;
-    }
-
-    const userId = signUpData.user?.id;
-    if (!userId) {
-      setError("Failed to get user ID.");
-      setLoading(false);
-      return;
-    }
-
-    let companyId = form.company_id;
-
-    try {
-      // Cek apakah registerType = new
-      if (registerType === "new") {
-        // 1️⃣ Cek apakah perusahaan sudah ada (case-insensitive)
-        const { data: existingCompany } = await supabase
-          .from("companies")
-          .select("id, name")
-          .ilike("name", form.company)
-          .maybeSingle();
-
-        if (existingCompany) {
-          // sudah ada — pakai id-nya
-          companyId = existingCompany.id;
-        } else {
-          // 2️⃣ belum ada — buat baru
-          const { data: newCompany, error: companyError } = await supabase
-            .from("companies")
-            .insert([{ name: form.company }])
-            .select()
-            .single();
-
-          if (companyError) throw companyError;
-          companyId = newCompany.id;
-        }
+      let message = "Unexpected error occurred.";
+      if (err instanceof Error) message = err.message;
+      else if (typeof err === "string") message = err;
+      else if (typeof err === "object" && err !== null && "message" in err) {
+        message = String((err as { message?: string }).message);
       }
 
-      // 3️⃣ Tambahkan HR baru ke hr_users
-      const { error: hrError } = await supabase.from("hr_users").insert([
-        {
-          id: userId,
-          email: form.email,
-          name: form.name,
-          role: registerType === "new" ? "admin" : "hr",
-          company_id: companyId,
-        },
-      ]);
-
-      if (hrError) throw hrError;
-
-      alert("✅ Registration successful! Please verify your email.");
-      setIsLogin(true);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Unexpected error occurred.");
-      }
+      await showAlert("error", "Oops!", message);
     } finally {
       setLoading(false);
     }
@@ -155,7 +193,7 @@ export default function AuthDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {/* Trigger */}
+      {/* Trigger Button */}
       <DialogTrigger asChild>
         <Button
           size="lg"
@@ -165,8 +203,11 @@ export default function AuthDialog() {
         </Button>
       </DialogTrigger>
 
-      {/* Modal */}
-      <DialogContent className="sm:max-w-md">
+      {/* Modal Auth */}
+      <DialogContent
+        className="sm:max-w-md"
+        onInteractOutside={(e) => e.preventDefault()} // cegah SweetAlert nutup dialog
+      >
         <DialogHeader>
           <DialogTitle>
             {isLogin ? "Login HR" : "Register HR Account"}
@@ -174,81 +215,25 @@ export default function AuthDialog() {
           <DialogDescription>
             {isLogin
               ? "Welcome back! Please login to access your dashboard."
-              : "Create or join a company to manage your recruitment process."}
+              : "Create your HR account. The first registered user becomes admin, others require approval."}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           {!isLogin && (
-            <>
-              {/* Pilih tipe register */}
-              <div>
-                <Label>Registration Type</Label>
-                <Select
-                  value={registerType}
-                  onValueChange={(v: "new" | "join") => setRegisterType(v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">🧑‍💼 Create New Company</SelectItem>
-                    <SelectItem value="join">
-                      👥 Join Existing Company
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Nama & perusahaan */}
-              <div>
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  placeholder="Your name"
-                  value={form.name}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              {registerType === "new" ? (
-                <div>
-                  <Label htmlFor="company">Company Name</Label>
-                  <Input
-                    id="company"
-                    name="company"
-                    placeholder="e.g. NextStep Technologies"
-                    value={form.company}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              ) : (
-                <div>
-                  <Label>Join Existing Company</Label>
-                  <Select
-                    value={form.company_id}
-                    onValueChange={(v) => setForm({ ...form, company_id: v })}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select company" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {companies.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </>
+            <div>
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                name="name"
+                placeholder="Your full name"
+                value={form.name}
+                onChange={handleChange}
+                required
+              />
+            </div>
           )}
 
-          {/* Email & Password */}
           <div>
             <Label htmlFor="email">Email</Label>
             <Input
@@ -261,6 +246,7 @@ export default function AuthDialog() {
               required
             />
           </div>
+
           <div>
             <Label htmlFor="password">Password</Label>
             <Input
@@ -273,8 +259,6 @@ export default function AuthDialog() {
               required
             />
           </div>
-
-          {error && <p className="text-sm text-red-500">{error}</p>}
 
           <Button
             type="submit"

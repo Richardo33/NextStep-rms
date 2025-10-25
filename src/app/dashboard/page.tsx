@@ -1,25 +1,95 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
 export default function DashboardPage() {
+  const [stats, setStats] = useState({
+    activeJobs: 0,
+    totalCandidates: 0,
+    pendingInterviews: 0,
+    pendingHRs: 0,
+    role: "",
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: me } = await supabase
+        .from("hr_users")
+        .select("role")
+        .eq("email", user.email)
+        .single();
+
+      const [jobs, candidates, interviews, pendingHRs] = await Promise.all([
+        supabase
+          .from("jobs")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "open"),
+        supabase.from("candidates").select("*", { count: "exact", head: true }),
+        supabase
+          .from("candidates")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "interview"),
+        supabase
+          .from("hr_users")
+          .select("*", { count: "exact", head: true })
+          .eq("approved", false),
+      ]);
+
+      setStats({
+        activeJobs: jobs.count ?? 0,
+        totalCandidates: candidates.count ?? 0,
+        pendingInterviews: interviews.count ?? 0,
+        pendingHRs: pendingHRs.count ?? 0,
+        role: me?.role || "",
+      });
+    };
+
+    fetchStats();
+  }, []);
+
   return (
     <div className="space-y-6">
       <h3 className="text-xl font-semibold text-gray-900">Overview</h3>
       <p className="text-gray-600">
-        Lihat sekilas progress rekrutmen, job yang aktif, dan kandidat terbaru.
+        Take a quick look at the recruitment progress, active jobs, and the
+        latest candidates.
       </p>
 
       <div className="grid md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <h4 className="font-semibold text-gray-800">Active Jobs</h4>
-          <p className="text-2xl font-bold text-indigo-600 mt-2">5</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <h4 className="font-semibold text-gray-800">Total Candidates</h4>
-          <p className="text-2xl font-bold text-indigo-600 mt-2">32</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <h4 className="font-semibold text-gray-800">Pending Interviews</h4>
-          <p className="text-2xl font-bold text-indigo-600 mt-2">4</p>
-        </div>
+        <StatCard label="Active Jobs" value={stats.activeJobs} />
+        <StatCard label="Total Candidates" value={stats.totalCandidates} />
+        <StatCard label="Pending Interviews" value={stats.pendingInterviews} />
+        {stats.role === "admin" && (
+          <StatCard
+            label="Pending HR Approvals"
+            value={stats.pendingHRs}
+            color="text-yellow-600"
+          />
+        )}
       </div>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  color = "text-indigo-600",
+}: {
+  label: string;
+  value: number;
+  color?: string;
+}) {
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-sm border">
+      <h4 className="font-semibold text-gray-800">{label}</h4>
+      <p className={`text-2xl font-bold mt-2 ${color}`}>{value}</p>
     </div>
   );
 }

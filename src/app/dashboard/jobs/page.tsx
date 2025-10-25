@@ -51,32 +51,18 @@ export default function JobsPage() {
     required_skills: "",
   });
 
-  // ✅ Fetch all jobs for HR's company
+  /* ============================================
+     ✅ Fetch all jobs (no company filter needed)
+  ============================================ */
   const fetchJobs = async () => {
     try {
       setLoading(true);
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: hr, error: hrError } = await supabase
-        .from("hr_users")
-        .select("company_id")
-        .eq("email", user.email)
-        .single();
-
-      if (hrError || !hr) return;
-
       const { data, error } = await supabase
         .from("jobs")
         .select("*")
-        .eq("company_id", hr.company_id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-
       setJobs(data || []);
     } catch (err) {
       console.error("Error fetching jobs:", err);
@@ -86,31 +72,19 @@ export default function JobsPage() {
   };
 
   useEffect(() => {
-    fetchJobs();
+    void fetchJobs();
   }, []);
 
-  // ✅ Handle add new job
+  /* ============================================
+     ✅ Add new job (no company_id)
+  ============================================ */
   const handleAddJob = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: hr } = await supabase
-        .from("hr_users")
-        .select("company_id")
-        .eq("email", user.email)
-        .single();
-
-      if (!hr?.company_id) return;
-
       const { error } = await supabase.from("jobs").insert([
         {
-          company_id: hr.company_id,
           title: form.title,
           job_level: form.job_level,
           education: form.education,
@@ -120,6 +94,7 @@ export default function JobsPage() {
           location: form.location,
           work_setup: form.work_setup,
           required_skills: form.required_skills,
+          status: "open",
         },
       ]);
 
@@ -145,7 +120,9 @@ export default function JobsPage() {
     }
   };
 
-  // ✅ Delete job
+  /* ============================================
+     ✅ Delete job
+  ============================================ */
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this job?")) return;
 
@@ -158,6 +135,9 @@ export default function JobsPage() {
     }
   };
 
+  /* ============================================
+     🧱 Render UI
+  ============================================ */
   return (
     <div>
       {/* Header */}

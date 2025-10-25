@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -19,13 +20,12 @@ interface CandidateDetail {
 
 export default function CandidateDetailPage() {
   const router = useRouter();
-  const params = useParams(); // ambil parameter dinamis
+  const params = useParams();
   const candidateId = params.id as string;
 
   const [candidate, setCandidate] = useState<CandidateDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Fetch data kandidat berdasarkan ID
   const fetchCandidate = async () => {
     try {
       setLoading(true);
@@ -66,7 +66,6 @@ export default function CandidateDetailPage() {
 
   useEffect(() => {
     if (candidateId) fetchCandidate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidateId]);
 
   if (loading) {
@@ -127,6 +126,8 @@ export default function CandidateDetailPage() {
                   ? "bg-yellow-100 text-yellow-700"
                   : candidate.status === "interview"
                   ? "bg-blue-100 text-blue-700"
+                  : candidate.status === "technical_test"
+                  ? "bg-orange-100 text-orange-700"
                   : candidate.status === "hired"
                   ? "bg-green-100 text-green-700"
                   : "bg-red-100 text-red-700"

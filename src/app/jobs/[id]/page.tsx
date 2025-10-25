@@ -41,6 +41,14 @@ interface Job {
   company: Company | null;
 }
 
+interface FormData {
+  name: string;
+  email: string;
+  phone: string;
+  city: string;
+  resume: File | null;
+}
+
 export default function JobDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -49,115 +57,78 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormData>({
     name: "",
     email: "",
     phone: "",
     city: "",
-    resume: null as File | null,
+    resume: null,
   });
   const [submitting, setSubmitting] = useState(false);
 
   // ✅ Fetch Job Detail
   useEffect(() => {
-    const fetchJobDetail = async (): Promise<void> => {
+    const fetchJobDetail = async () => {
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from("jobs")
-        .select(
-          `
-          id,
-          title,
-          employment_type,
-          experience,
-          description,
-          status,
-          location,
-          work_setup,
-          job_level,
-          education,
-          required_skills,
-          companies(name, location, logo_url, about)
-        `
-        )
-        .eq("id", jobId)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from("jobs")
+          .select(
+            "id, title, employment_type, experience, description, status, location, work_setup, job_level, education, required_skills"
+          )
+          .eq("id", jobId)
+          .single();
 
-      if (error || !data) {
-        console.error("❌ Error fetching job:", error);
+        if (error || !data) throw error;
+
+        const { data: companyData } = await supabase
+          .from("company_profile")
+          .select("name, location, logo_url, about")
+          .limit(1)
+          .single();
+
+        setJob({
+          ...data,
+          company: companyData || null,
+        });
+      } catch (err) {
+        console.error("❌ Error fetching job detail:", err);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const companyData = Array.isArray(data.companies)
-        ? data.companies[0]
-        : data.companies;
-
-      setJob({
-        ...data,
-        company: companyData || {
-          name: null,
-          location: null,
-          logo_url: null,
-          about: null,
-        },
-      });
-      setLoading(false);
     };
 
     if (jobId) fetchJobDetail();
   }, [jobId]);
 
   // ✅ Handle Apply
-  const handleApply = async (
-    e: React.FormEvent<HTMLFormElement>
-  ): Promise<void> => {
+  const handleApply = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitting(true);
 
     try {
-      // 🧩 Validasi file
       if (!form.resume) {
-        Swal.fire({
+        await Swal.fire({
           icon: "warning",
           title: "Resume Required",
-          text: "Please upload your resume in PDF format.",
+          text: "Please upload your resume (PDF only).",
         });
         setSubmitting(false);
         return;
       }
 
       if (form.resume.type !== "application/pdf") {
-        Swal.fire({
+        await Swal.fire({
           icon: "error",
           title: "Invalid File Type",
-          text: "Only PDF files are allowed for resumes.",
+          text: "Only PDF files are allowed.",
         });
         setSubmitting(false);
         return;
       }
 
-      // 🧩 Cek duplikasi kandidat (email + job_id)
-      const { data: existing } = await supabase
-        .from("candidates")
-        .select("id")
-        .eq("email", form.email)
-        .eq("job_id", jobId)
-        .maybeSingle();
-
-      if (existing) {
-        Swal.fire({
-          icon: "info",
-          title: "Already Applied",
-          text: "You have already applied for this position.",
-        });
-        setSubmitting(false);
-        return;
-      }
-
-      // 🧩 Upload resume ke Supabase Storage
+      // Upload file ke storage
       const fileExt = form.resume.name.split(".").pop();
       const safeName = form.name.trim().replace(/\s+/g, "_");
       const fileName = `${Date.now()}-${safeName}.${fileExt}`;
@@ -175,10 +146,10 @@ export default function JobDetailPage() {
         .from("resumes")
         .getPublicUrl(fileName);
 
-      const publicUrl = publicData?.publicUrl ?? null;
-      if (!publicUrl) throw new Error("Failed to generate resume URL.");
+      const resumeUrl = publicData?.publicUrl;
+      if (!resumeUrl) throw new Error("Failed to get resume URL.");
 
-      // 🧩 Insert ke tabel candidates
+      // Insert kandidat
       const { error: insertError } = await supabase.from("candidates").insert([
         {
           job_id: jobId,
@@ -186,31 +157,26 @@ export default function JobDetailPage() {
           email: form.email,
           phone: form.phone,
           city: form.city,
-          resume_url: publicUrl,
+          resume_url: resumeUrl,
           status: "screening",
         },
       ]);
 
       if (insertError) throw insertError;
 
-      Swal.fire({
+      await Swal.fire({
         icon: "success",
         title: "Application Submitted 🎉",
         text: "Your application has been successfully submitted.",
         confirmButtonColor: "#4f46e5",
       });
 
-      setForm({
-        name: "",
-        email: "",
-        phone: "",
-        city: "",
-        resume: null,
-      });
+      setForm({ name: "", email: "", phone: "", city: "", resume: null });
       setOpen(false);
+      router.push("/jobs");
     } catch (error) {
       console.error("❌ Apply error:", error);
-      Swal.fire({
+      await Swal.fire({
         icon: "error",
         title: "Submission Failed",
         text: "There was an issue submitting your application. Please try again.",
@@ -237,7 +203,6 @@ export default function JobDetailPage() {
   return (
     <main className="min-h-screen bg-linear-to-b from-indigo-50 to-white text-gray-800">
       <section className="max-w-4xl mx-auto px-6 py-16">
-        {/* 🔙 Back Button */}
         <Button
           variant="outline"
           className="mb-6 flex items-center gap-2 text-gray-700 hover:text-indigo-700"
@@ -262,7 +227,7 @@ export default function JobDetailPage() {
                 {job.title}
               </h1>
               <p className="text-gray-500">
-                {job.company?.name || "Unknown Company"}
+                {job.company?.name || "Our Company"}
                 {job.location ? ` — ${job.location}` : ""}
               </p>
             </div>
@@ -271,9 +236,7 @@ export default function JobDetailPage() {
           {/* Job Detail */}
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2 mb-4">
-              {job.employment_type && (
-                <Badge variant="outline">{job.employment_type}</Badge>
-              )}
+              {job.employment_type && <Badge>{job.employment_type}</Badge>}
               {job.work_setup && (
                 <Badge variant="secondary">{job.work_setup}</Badge>
               )}
@@ -315,48 +278,30 @@ export default function JobDetailPage() {
                 </DialogHeader>
 
                 <form onSubmit={handleApply} className="space-y-4 mt-4">
-                  <div>
-                    <Label>Name</Label>
-                    <Input
-                      required
-                      value={form.name}
-                      onChange={(e) =>
-                        setForm({ ...form, name: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>Email</Label>
-                    <Input
-                      type="email"
-                      required
-                      value={form.email}
-                      onChange={(e) =>
-                        setForm({ ...form, email: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>Phone Number</Label>
-                    <Input
-                      type="tel"
-                      required
-                      value={form.phone}
-                      onChange={(e) =>
-                        setForm({ ...form, phone: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>City</Label>
-                    <Input
-                      required
-                      value={form.city}
-                      onChange={(e) =>
-                        setForm({ ...form, city: e.target.value })
-                      }
-                    />
-                  </div>
+                  {(["name", "email", "phone", "city"] as const).map(
+                    (field) => (
+                      <div key={field}>
+                        <Label>
+                          {field.charAt(0).toUpperCase() + field.slice(1)}
+                        </Label>
+                        <Input
+                          required
+                          type={
+                            field === "email"
+                              ? "email"
+                              : field === "phone"
+                              ? "tel"
+                              : "text"
+                          }
+                          value={form[field]}
+                          onChange={(e) =>
+                            setForm({ ...form, [field]: e.target.value })
+                          }
+                        />
+                      </div>
+                    )
+                  )}
+
                   <div>
                     <Label>Upload Resume (PDF only)</Label>
                     <Input

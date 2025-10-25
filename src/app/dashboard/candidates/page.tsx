@@ -26,9 +26,9 @@ interface Candidate {
   id: string;
   name: string;
   email: string;
-  phone: string;
-  city: string;
-  resume_url: string;
+  phone: string | null;
+  city: string | null;
+  resume_url: string | null;
   status: string;
   applied_at: string;
   job: { id: string; title: string };
@@ -42,30 +42,10 @@ export default function CandidatesPage() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"newest" | "oldest">("newest");
 
-  // ✅ Fetch data kandidat
+  // ✅ Ambil semua kandidat (tanpa company filter)
   const fetchCandidates = async () => {
     try {
       setLoading(true);
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: hr } = await supabase
-        .from("hr_users")
-        .select("company_id")
-        .eq("id", user.id)
-        .single();
-
-      if (!hr?.company_id) return;
-
-      const { data: jobs } = await supabase
-        .from("jobs")
-        .select("id")
-        .eq("company_id", hr.company_id);
-
-      const jobIds = jobs?.map((j) => j.id) || [];
 
       const { data, error } = await supabase
         .from("candidates")
@@ -82,13 +62,12 @@ export default function CandidatesPage() {
           job:jobs(id, title)
         `
         )
-        .in("job_id", jobIds)
         .order("applied_at", { ascending: false });
 
       if (error) throw error;
 
-      if (data) {
-        const normalized: Candidate[] = data.map((c) => {
+      const normalized: Candidate[] =
+        data?.map((c) => {
           const jobItem = Array.isArray(c.job) ? c.job[0] : c.job;
           return {
             id: c.id,
@@ -104,12 +83,11 @@ export default function CandidatesPage() {
               title: jobItem?.title || "",
             },
           };
-        });
+        }) ?? [];
 
-        setCandidates(normalized);
-      }
+      setCandidates(normalized);
     } catch (err) {
-      console.error("Error fetching candidates:", err);
+      console.error("❌ Error fetching candidates:", err);
     } finally {
       setLoading(false);
     }
@@ -119,7 +97,7 @@ export default function CandidatesPage() {
     fetchCandidates();
   }, []);
 
-  // ✅ Gabungkan Filter + Search + Sort
+  // ✅ Filter, search, dan sorting kandidat
   const filteredCandidates = useMemo(() => {
     let list = [...candidates];
 
@@ -146,29 +124,33 @@ export default function CandidatesPage() {
     return list;
   }, [candidates, filter, search, sort]);
 
+  // 🗑️ Hapus kandidat
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this candidate?")) return;
+    if (!confirm("Are you sure you want to delete this candidate?")) return;
+
     try {
       const { error } = await supabase.from("candidates").delete().eq("id", id);
       if (error) throw error;
+
       setCandidates((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
-      console.error("Error deleting candidate:", err);
+      console.error("❌ Error deleting candidate:", err);
     }
   };
 
+  // 🖼️ Tampilan utama
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h3 className="text-xl font-semibold text-gray-900">Candidates</h3>
           <p className="text-sm text-gray-500">
-            View, search, and manage your applicants.
+            View, search, and manage all applicants.
           </p>
         </div>
 
-        {/* Filter/Search/Sort Controls */}
+        {/* Filter & Sort Controls */}
         <div className="flex flex-wrap items-center gap-3">
           <Input
             placeholder="Search by name, email, or job"
@@ -185,7 +167,7 @@ export default function CandidatesPage() {
               <SelectItem value="all">All</SelectItem>
               <SelectItem value="screening">Screening</SelectItem>
               <SelectItem value="interview">Interview</SelectItem>
-              <SelectItem value="interview">Technical Test</SelectItem>
+              <SelectItem value="technical_test">Technical Test</SelectItem>
               <SelectItem value="hired">Hired</SelectItem>
               <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
@@ -206,7 +188,7 @@ export default function CandidatesPage() {
         </div>
       </div>
 
-      {/* Tabel Kandidat */}
+      {/* Table Section */}
       {loading ? (
         <p className="text-gray-500">Loading candidates...</p>
       ) : filteredCandidates.length === 0 ? (
@@ -259,6 +241,8 @@ export default function CandidatesPage() {
                             ? "bg-blue-100 text-blue-700"
                             : c.status === "interview"
                             ? "bg-yellow-100 text-yellow-700"
+                            : c.status === "technical_test"
+                            ? "bg-orange-100 text-orange-700"
                             : c.status === "hired"
                             ? "bg-green-100 text-green-700"
                             : c.status === "rejected"
