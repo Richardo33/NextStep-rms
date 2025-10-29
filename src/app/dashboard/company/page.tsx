@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -29,15 +30,39 @@ interface CompanyProfile {
 }
 
 export default function CompanyDashboardPage() {
+  const router = useRouter();
   const [openEdit, setOpenEdit] = useState(false);
   const [company, setCompany] = useState<CompanyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [file, setFile] = useState<File | null>(null);
 
+  // ✅ STEP 1: Check user session
+  useEffect(() => {
+    const checkSession = async () => {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+
+      console.log("[Dashboard] user session:", user, "error:", error);
+
+      if (error) {
+        console.error("[Dashboard] Session error:", error);
+      }
+
+      if (!user) {
+        console.warn("[Dashboard] No active session — redirecting to home.");
+        router.replace("/");
+      }
+    };
+
+    checkSession();
+  }, [router]);
+
+  // ✅ STEP 2: Fetch company data
   const fetchCompany = async () => {
     try {
       setLoading(true);
-
       const { data, error } = await supabase
         .from("company_profile")
         .select(
@@ -59,6 +84,7 @@ export default function CompanyDashboardPage() {
     void fetchCompany();
   }, []);
 
+  // ✅ STEP 3: Handle Save changes
   const handleSave = async () => {
     if (!company) return;
 
@@ -105,6 +131,7 @@ export default function CompanyDashboardPage() {
     }
   };
 
+  // ✅ STEP 4: Create default company (if not exists)
   const createDefaultCompany = async () => {
     try {
       const { error } = await supabase.from("company_profile").insert({
@@ -127,6 +154,7 @@ export default function CompanyDashboardPage() {
     }
   };
 
+  // ✅ STEP 5: Loading states
   if (loading)
     return (
       <div className="flex items-center justify-center h-screen text-gray-500">
@@ -142,8 +170,9 @@ export default function CompanyDashboardPage() {
       </div>
     );
 
+  // ✅ STEP 6: Render dashboard
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -201,6 +230,7 @@ export default function CompanyDashboardPage() {
         </CardContent>
       </Card>
 
+      {/* ✅ Edit Dialog */}
       <Dialog open={openEdit} onOpenChange={setOpenEdit}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
