@@ -94,7 +94,8 @@ export default function AuthDialog() {
 
         // ✅ langsung redirect tanpa alert
         setOpen(false);
-        router.replace("/dashboard/company");
+        // router.replace("/dashboard/company");
+        window.location.href = "/dashboard/company";
       } else {
         // ✅ REGISTER
         const { error: signUpError } = await supabase.auth.signUp({
