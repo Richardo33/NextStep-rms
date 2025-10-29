@@ -112,13 +112,9 @@ export default function TeamPage() {
       </div>
     );
 
-  /* ===========================================================
-     ADMIN VIEW
-  =========================================================== */
   if (role === "admin") {
     return (
       <div className="space-y-8">
-        {/* Approved HR List */}
         <Card>
           <CardHeader>
             <h2 className="text-xl font-semibold">Approved HR Team</h2>
@@ -162,7 +158,6 @@ export default function TeamPage() {
           </CardContent>
         </Card>
 
-        {/* Pending Approvals */}
         <Card>
           <CardHeader>
             <h2 className="text-xl font-semibold text-yellow-600">
@@ -217,9 +212,6 @@ export default function TeamPage() {
     );
   }
 
-  /* ===========================================================
-     HR VIEW (non-admin)
-  =========================================================== */
   return (
     <section className="max-w-6xl mx-auto px-6 py-10">
       <h1 className="text-3xl font-bold mb-6 text-center text-indigo-700">

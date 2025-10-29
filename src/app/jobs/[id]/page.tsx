@@ -308,7 +308,6 @@ export default function JobDetailPage() {
             </div>
           </div>
 
-          {/* Apply Button */}
           <div className="mt-8">
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
@@ -347,7 +346,6 @@ export default function JobDetailPage() {
                     )
                   )}
 
-                  {/* Dropdown Pendidikan Terakhir */}
                   <div>
                     <Label>Last Education</Label>
                     <Select

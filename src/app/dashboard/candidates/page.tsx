@@ -168,7 +168,6 @@ export default function CandidatesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h3 className="text-xl font-semibold text-gray-900">Candidates</h3>
@@ -177,7 +176,6 @@ export default function CandidatesPage() {
           </p>
         </div>
 
-        {/* Filter & Sort Controls */}
         <div className="flex flex-wrap items-center gap-3">
           <Input
             placeholder="Search by name, email, or job"
@@ -194,6 +192,7 @@ export default function CandidatesPage() {
               <SelectItem value="all">All</SelectItem>
               <SelectItem value="screening">Screening</SelectItem>
               <SelectItem value="interview">Interview</SelectItem>
+              <SelectItem value="interview_set">Interview-Set</SelectItem>
               <SelectItem value="technical_test">Technical Test</SelectItem>
               <SelectItem value="hired">Hired</SelectItem>
               <SelectItem value="rejected">Rejected</SelectItem>
@@ -215,7 +214,6 @@ export default function CandidatesPage() {
         </div>
       </div>
 
-      {/* Table Section */}
       {loading ? (
         <p className="text-gray-500">Loading candidates...</p>
       ) : filteredCandidates.length === 0 ? (
@@ -291,7 +289,7 @@ export default function CandidatesPage() {
 
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {c.status === "interview" && (
+                      {c.status === "interview_set" && (
                         <>
                           <Button
                             size="sm"

@@ -109,7 +109,6 @@ export default function PublicJobsPage() {
           Explore current opportunities and find the right fit for you.
         </p>
 
-        {/* 🔍 Filters */}
         <div className="flex flex-col md:flex-row gap-4 justify-center items-center mb-10">
           <Input
             placeholder="Search jobs..."
@@ -142,7 +141,6 @@ export default function PublicJobsPage() {
           </Button>
         </div>
 
-        {/* 🧱 Job List */}
         {filteredJobs.length === 0 ? (
           <p className="text-center text-gray-500">
             No matching positions found.
@@ -178,23 +176,19 @@ export default function PublicJobsPage() {
                   </CardHeader>
 
                   <CardContent className="space-y-3">
-                    {/* Level & Education */}
                     <p className="text-sm text-gray-600">
                       {job.job_level && `${job.job_level} • `}
                       {job.education || ""}
                     </p>
 
-                    {/* Type & Work Setup */}
                     <p className="text-sm text-gray-600">
                       {job.employment_type} • {job.work_setup}
                     </p>
 
-                    {/* Location */}
                     {job.location && (
                       <p className="text-sm text-gray-600">📍 {job.location}</p>
                     )}
 
-                    {/* Skills */}
                     {job.required_skills && (
                       <p className="text-sm text-gray-700">
                         🛠️ <span className="font-medium">Skills:</span>{" "}
@@ -202,7 +196,6 @@ export default function PublicJobsPage() {
                       </p>
                     )}
 
-                    {/* Status Badge */}
                     <Badge
                       variant="outline"
                       className={

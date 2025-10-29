@@ -34,9 +34,6 @@ export default function CompanyDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [file, setFile] = useState<File | null>(null);
 
-  /* ===================================================
-     ✅ Fetch Company Profile (single company system)
-  =================================================== */
   const fetchCompany = async () => {
     try {
       setLoading(true);
@@ -163,7 +160,6 @@ export default function CompanyDashboardPage() {
 
       <Separator />
 
-      {/* ===== Company Info ===== */}
       <Card className="overflow-hidden">
         <CardHeader className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
           <Image
@@ -205,7 +201,6 @@ export default function CompanyDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* ===== Edit Company Modal ===== */}
       <Dialog open={openEdit} onOpenChange={setOpenEdit}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -218,7 +213,6 @@ export default function CompanyDashboardPage() {
             }}
             className="space-y-4"
           >
-            {/* Upload logo */}
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">
                 Company Logo

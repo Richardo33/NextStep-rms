@@ -173,7 +173,6 @@ export default function ProfileDialog({
         </DialogHeader>
 
         <div className="space-y-5 pb-4">
-          {/* Avatar Upload */}
           <div className="flex items-center gap-4">
             <div className="relative w-16 h-16 rounded-full overflow-hidden border border-gray-300 dark:border-gray-700">
               <Image
@@ -204,7 +203,6 @@ export default function ProfileDialog({
             )}
           </div>
 
-          {/* Name */}
           <div>
             <Label>Name</Label>
             <Input
@@ -219,7 +217,6 @@ export default function ProfileDialog({
             />
           </div>
 
-          {/* Email & Role */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Email</Label>
@@ -231,7 +228,6 @@ export default function ProfileDialog({
             </div>
           </div>
 
-          {/* Position */}
           <div>
             <Label>Position</Label>
             <Input
@@ -246,7 +242,6 @@ export default function ProfileDialog({
             />
           </div>
 
-          {/* Bio */}
           <div>
             <div className="flex justify-between items-center">
               <Label>Bio</Label>
@@ -274,7 +269,6 @@ export default function ProfileDialog({
             />
           </div>
 
-          {/* Skills */}
           <div>
             <Label>Skills (comma separated)</Label>
             <Input
@@ -294,7 +288,6 @@ export default function ProfileDialog({
             />
           </div>
 
-          {/* Links */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>LinkedIn</Label>
@@ -324,7 +317,6 @@ export default function ProfileDialog({
             </div>
           </div>
 
-          {/* Website */}
           <div>
             <Label>Website</Label>
             <Input

@@ -53,9 +53,6 @@ export default function JobsPage() {
     required_skills: "",
   });
 
-  /* ===============================
-     ✅ Fetch Jobs
-  =============================== */
   const fetchJobs = async () => {
     try {
       setLoading(true);
@@ -77,9 +74,6 @@ export default function JobsPage() {
     void fetchJobs();
   }, []);
 
-  /* ===============================
-     ✅ Create Job
-  =============================== */
   const handleAddJob = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -122,9 +116,6 @@ export default function JobsPage() {
     }
   };
 
-  /* ===============================
-     ✅ Delete Job
-  =============================== */
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this job?")) return;
 
@@ -137,12 +128,8 @@ export default function JobsPage() {
     }
   };
 
-  /* ===============================
-     🧱 Render UI
-  =============================== */
   return (
     <div>
-      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-semibold text-gray-900">Job Listings</h3>
 
@@ -170,7 +157,6 @@ export default function JobsPage() {
                 />
               </div>
 
-              {/* Job Level & Education */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Job Level</Label>
@@ -216,7 +202,6 @@ export default function JobsPage() {
                 </div>
               </div>
 
-              {/* Employment Type & Work Setup */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Employment Type</Label>
@@ -325,7 +310,6 @@ export default function JobsPage() {
         </Dialog>
       </div>
 
-      {/* Job Cards */}
       {loading ? (
         <p className="text-gray-500">Loading jobs...</p>
       ) : jobs.length === 0 ? (
