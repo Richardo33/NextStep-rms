@@ -98,23 +98,39 @@ export default function AuthDialog() {
           return;
         }
 
+        // ✅ Semua valid — mulai redirect
         console.log("[Auth] Approved HR, proceeding to redirect...");
-        setOpen(false);
 
-        // 🚀 Gunakan router.push() agar tidak di-block oleh modal/dialog
+        await Swal.close();
+        setOpen(false);
+        await new Promise((r) => setTimeout(r, 300));
+
         try {
           router.push("/dashboard/company");
-          console.log("[Auth] router.push executed");
-        } catch (navErr) {
-          console.error(
-            "[Auth] router.push failed, fallback to window.location:",
-            navErr
-          );
-          router.push("/dashboard/company");
+          console.log("[Auth] router.push executed (after dialog closed)");
+
+          // Debug tambahan
+          setTimeout(() => {
+            console.log("[Auth] current pathname:", window.location.pathname);
+          }, 300);
+
+          // fallback paksa jika 800ms belum pindah
+          setTimeout(() => {
+            if (window.location.pathname !== "/dashboard/company") {
+              console.warn(
+                "[Auth] Fallback: forcing redirect via window.location.assign"
+              );
+              window.location.assign("/dashboard/company");
+            }
+          }, 800);
+        } catch (err) {
+          console.error("[Auth] router.push failed, using hard redirect:", err);
+          window.location.assign("/dashboard/company");
         }
 
         console.log("[Auth] End of login flow");
       } else {
+        // ✅ Register logic
         const { error: signUpError } = await supabase.auth.signUp({
           email: form.email,
           password: form.password,
@@ -168,8 +184,10 @@ export default function AuthDialog() {
           return;
         }
 
+        await Swal.close();
         setOpen(false);
-        router.replace("/dashboard/company");
+        await new Promise((r) => setTimeout(r, 300));
+        window.location.assign("/dashboard/company");
       }
     } catch (err: unknown) {
       console.error("Auth error:", err);
@@ -188,7 +206,13 @@ export default function AuthDialog() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        console.log("[AuthDialog] Dialog open:", value);
+        setOpen(value);
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           size="lg"
