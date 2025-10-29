@@ -21,15 +21,6 @@ export default function Contact() {
           automation.
         </p>
       </Reveal>
-
-      <Reveal delay={0.4}>
-        <Button
-          size="lg"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-6 text-base sm:text-lg"
-        >
-          Get Started for Free
-        </Button>
-      </Reveal>
     </section>
   );
 }

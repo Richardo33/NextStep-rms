@@ -45,9 +45,7 @@ export default function AuthDialog() {
       text,
       background: "#fff",
       confirmButtonColor: icon === "error" ? "#EF4444" : "#6366F1",
-      customClass: {
-        popup: "!z-[9999]",
-      },
+      customClass: { popup: "!z-[9999]" },
       didOpen: () => {
         const popup = Swal.getPopup();
         if (popup) popup.onclick = (e) => e.stopPropagation();
@@ -61,6 +59,7 @@ export default function AuthDialog() {
 
     try {
       if (isLogin) {
+        // ✅ LOGIN
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: form.email,
           password: form.password,
@@ -93,22 +92,11 @@ export default function AuthDialog() {
           return;
         }
 
-        await MySwal.fire({
-          icon: "success",
-          title: `Welcome back, ${hr.name || "HR"}!`,
-          text: "Redirecting to your dashboard...",
-          timer: 1000,
-          showConfirmButton: false,
-          background: "#fff",
-          customClass: { popup: "!z-[9999]" },
-        });
-
+        // ✅ langsung redirect tanpa alert
         setOpen(false);
-
-        setTimeout(() => {
-          router.replace("/dashboard/company");
-        }, 1200);
+        router.replace("/dashboard/company");
       } else {
+        // ✅ REGISTER
         const { error: signUpError } = await supabase.auth.signUp({
           email: form.email,
           password: form.password,
@@ -121,6 +109,7 @@ export default function AuthDialog() {
           throw new Error(signUpError.message || "Registration failed.");
         }
 
+        // auto login setelah signup
         await new Promise((r) => setTimeout(r, 1000));
 
         const { error: autoLoginError } =
@@ -162,18 +151,9 @@ export default function AuthDialog() {
           return;
         }
 
-        await MySwal.fire({
-          icon: "success",
-          title: `Welcome, ${hr.name || "Admin"}!`,
-          text: "Redirecting to dashboard...",
-          timer: 1800,
-          showConfirmButton: false,
-          background: "#fff",
-          customClass: { popup: "!z-[9999]" },
-        });
-
+        // ✅ langsung redirect tanpa alert
         setOpen(false);
-        router.push("/dashboard");
+        router.replace("/dashboard/company");
       }
     } catch (err: unknown) {
       console.error("Auth error:", err);
@@ -193,7 +173,6 @@ export default function AuthDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {/* Trigger Button */}
       <DialogTrigger asChild>
         <Button
           size="lg"
