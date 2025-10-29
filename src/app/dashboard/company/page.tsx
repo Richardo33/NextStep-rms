@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-expressions */
+"use client";
 export const dynamic = "force-dynamic";
-
-("use client");
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
