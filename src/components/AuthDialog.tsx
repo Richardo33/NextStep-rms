@@ -59,17 +59,21 @@ export default function AuthDialog() {
 
     try {
       if (isLogin) {
+        console.log("[Auth] Starting login...");
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: form.email,
           password: form.password,
         });
 
         if (signInError) throw new Error(signInError.message || "Login failed");
+        console.log("[Auth] Login success, fetching user...");
 
         const {
           data: { user },
           error: userError,
         } = await supabase.auth.getUser();
+
+        console.log("[Auth] user:", user);
 
         if (userError || !user) throw new Error("Failed to get user session.");
 
@@ -78,6 +82,8 @@ export default function AuthDialog() {
           .select("approved, role, name")
           .eq("id", user.id)
           .maybeSingle();
+
+        console.log("[Auth] HR data:", hr);
 
         if (hrError) throw new Error(hrError.message || "Query failed.");
         if (!hr) throw new Error("Account not found in HR records.");
@@ -88,12 +94,26 @@ export default function AuthDialog() {
             "Awaiting Approval",
             "Your account has been created but is still pending admin approval."
           );
+          console.log("[Auth] Account pending approval, stopping redirect.");
           return;
         }
 
+        console.log("[Auth] Approved HR, proceeding to redirect...");
         setOpen(false);
-        window.location.href = "/dashboard/company";
-        console.log("login success");
+
+        // 🚀 Gunakan router.push() agar tidak di-block oleh modal/dialog
+        try {
+          router.push("/dashboard/company");
+          console.log("[Auth] router.push executed");
+        } catch (navErr) {
+          console.error(
+            "[Auth] router.push failed, fallback to window.location:",
+            navErr
+          );
+          router.push("/dashboard/company");
+        }
+
+        console.log("[Auth] End of login flow");
       } else {
         const { error: signUpError } = await supabase.auth.signUp({
           email: form.email,
