@@ -1,4 +1,3 @@
-// layout.tsx
 export const metadata = {
   title: "Team | NextStep",
   description: "Meet the people behind NextStep HR Automation.",

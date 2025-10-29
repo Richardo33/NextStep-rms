@@ -61,7 +61,6 @@ export default function AuthDialog() {
 
     try {
       if (isLogin) {
-        // ===================== LOGIN =====================
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: form.email,
           password: form.password,
@@ -107,7 +106,6 @@ export default function AuthDialog() {
         setOpen(false);
         router.push("/dashboard");
       } else {
-        // ===================== REGISTER =====================
         const { error: signUpError } = await supabase.auth.signUp({
           email: form.email,
           password: form.password,
@@ -120,7 +118,6 @@ export default function AuthDialog() {
           throw new Error(signUpError.message || "Registration failed.");
         }
 
-        // Tunggu trigger create_hr_user_on_signup jalan
         await new Promise((r) => setTimeout(r, 1000));
 
         const { error: autoLoginError } =
@@ -203,10 +200,9 @@ export default function AuthDialog() {
         </Button>
       </DialogTrigger>
 
-      {/* Modal Auth */}
       <DialogContent
         className="sm:max-w-md"
-        onInteractOutside={(e) => e.preventDefault()} // cegah SweetAlert nutup dialog
+        onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle>

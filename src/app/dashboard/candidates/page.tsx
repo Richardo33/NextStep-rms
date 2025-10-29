@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 
 interface Candidate {
   id: string;
@@ -42,7 +42,6 @@ export default function CandidatesPage() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"newest" | "oldest">("newest");
 
-  // ✅ Ambil semua kandidat (tanpa company filter)
   const fetchCandidates = async () => {
     try {
       setLoading(true);
@@ -97,7 +96,6 @@ export default function CandidatesPage() {
     fetchCandidates();
   }, []);
 
-  // ✅ Filter, search, dan sorting kandidat
   const filteredCandidates = useMemo(() => {
     let list = [...candidates];
 
@@ -124,7 +122,6 @@ export default function CandidatesPage() {
     return list;
   }, [candidates, filter, search, sort]);
 
-  // 🗑️ Hapus kandidat
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this candidate?")) return;
 
@@ -138,7 +135,37 @@ export default function CandidatesPage() {
     }
   };
 
-  // 🖼️ Tampilan utama
+  const handleMoveStatus = async (id: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("candidates")
+        .update({ status: newStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+      alert(`✅ Candidate moved to ${newStatus.replace("_", " ")}.`);
+      fetchCandidates();
+    } catch (err) {
+      console.error("❌ Error updating status:", err);
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    if (!confirm("Are you sure you want to reject this candidate?")) return;
+    try {
+      const { error } = await supabase
+        .from("candidates")
+        .update({ status: "rejected" })
+        .eq("id", id);
+
+      if (error) throw error;
+      alert("Candidate rejected.");
+      fetchCandidates();
+    } catch (err) {
+      console.error("❌ Error rejecting candidate:", err);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -264,28 +291,73 @@ export default function CandidatesPage() {
 
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/dashboard/candidates/${c.id}`);
-                        }}
-                      >
-                        <Pencil size={14} />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="destructive"
-                        className="h-8 w-8"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(c.id);
-                        }}
-                      >
-                        <Trash2 size={14} />
-                      </Button>
+                      {c.status === "interview" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="h-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveStatus(c.id, "technical_test");
+                            }}
+                          >
+                            Technical Test
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReject(c.id);
+                            }}
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      )}
+
+                      {c.status === "technical_test" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="h-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveStatus(c.id, "hired");
+                            }}
+                          >
+                            Hired
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleReject(c.id);
+                            }}
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      )}
+
+                      {(c.status === "hired" || c.status === "rejected") && (
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(c.id);
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

@@ -26,9 +26,13 @@ type Company = {
 type Job = {
   id: string;
   title: string;
+  job_level: string | null;
+  education: string | null;
   employment_type: string | null;
   experience: string | null;
-  description: string | null;
+  work_setup: string | null;
+  location: string | null;
+  required_skills: string | null;
   status: string;
   company: Company | null;
 };
@@ -43,7 +47,6 @@ export default function PublicJobsPage() {
   useEffect(() => {
     const fetchJobs = async () => {
       setLoading(true);
-
       try {
         const { data: companyData } = await supabase
           .from("company_profile")
@@ -53,10 +56,11 @@ export default function PublicJobsPage() {
 
         setCompany(companyData || null);
 
-        // Fetch open jobs
         const { data, error } = await supabase
           .from("jobs")
-          .select("id, title, employment_type, experience, description, status")
+          .select(
+            "id, title, job_level, education, employment_type, experience, work_setup, location, required_skills, status"
+          )
           .eq("status", "open")
           .order("created_at", { ascending: false });
 
@@ -82,7 +86,7 @@ export default function PublicJobsPage() {
     return jobs.filter((job) => {
       const matchesSearch =
         job.title.toLowerCase().includes(search.toLowerCase()) ||
-        job.description?.toLowerCase().includes(search.toLowerCase());
+        job.required_skills?.toLowerCase().includes(search.toLowerCase());
       const matchesType = type === "all" || job.employment_type === type;
       return matchesSearch && matchesType;
     });
@@ -147,7 +151,7 @@ export default function PublicJobsPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredJobs.map((job) => (
               <Link key={job.id} href={`/jobs/${job.id}`}>
-                <Card className="cursor-pointer hover:shadow-xl transition-all duration-300 rounded-xl overflow-hidden">
+                <Card className="cursor-pointer hover:shadow-lg border rounded-xl transition-all duration-300">
                   <CardHeader className="flex flex-col items-start gap-3">
                     <div className="w-full flex items-center justify-start gap-3">
                       <Image
@@ -174,12 +178,41 @@ export default function PublicJobsPage() {
                   </CardHeader>
 
                   <CardContent className="space-y-3">
-                    {job.employment_type && (
-                      <Badge variant="outline">{job.employment_type}</Badge>
-                    )}
-                    <p className="text-sm text-gray-700 line-clamp-3">
-                      {job.description}
+                    {/* Level & Education */}
+                    <p className="text-sm text-gray-600">
+                      {job.job_level && `${job.job_level} • `}
+                      {job.education || ""}
                     </p>
+
+                    {/* Type & Work Setup */}
+                    <p className="text-sm text-gray-600">
+                      {job.employment_type} • {job.work_setup}
+                    </p>
+
+                    {/* Location */}
+                    {job.location && (
+                      <p className="text-sm text-gray-600">📍 {job.location}</p>
+                    )}
+
+                    {/* Skills */}
+                    {job.required_skills && (
+                      <p className="text-sm text-gray-700">
+                        🛠️ <span className="font-medium">Skills:</span>{" "}
+                        {job.required_skills}
+                      </p>
+                    )}
+
+                    {/* Status Badge */}
+                    <Badge
+                      variant="outline"
+                      className={
+                        job.status === "open"
+                          ? "bg-green-100 text-green-700 border-none"
+                          : "bg-red-100 text-red-700 border-none"
+                      }
+                    >
+                      {job.status}
+                    </Badge>
                   </CardContent>
                 </Card>
               </Link>

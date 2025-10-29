@@ -18,6 +18,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft } from "lucide-react";
 import Swal from "sweetalert2";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Company {
   name: string | null;
@@ -46,6 +53,7 @@ interface FormData {
   email: string;
   phone: string;
   city: string;
+  education_level: string;
   resume: File | null;
 }
 
@@ -62,14 +70,15 @@ export default function JobDetailPage() {
     email: "",
     phone: "",
     city: "",
+    education_level: "",
     resume: null,
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // ✅ Fetch Job Detail
   useEffect(() => {
     const fetchJobDetail = async () => {
       setLoading(true);
+      console.log("📦 Fetching job detail for ID:", jobId);
 
       try {
         const { data, error } = await supabase
@@ -81,12 +90,15 @@ export default function JobDetailPage() {
           .single();
 
         if (error || !data) throw error;
+        console.log("✅ Job fetched:", data);
 
         const { data: companyData } = await supabase
           .from("company_profile")
           .select("name, location, logo_url, about")
           .limit(1)
           .single();
+
+        console.log("🏢 Company fetched:", companyData);
 
         setJob({
           ...data,
@@ -102,13 +114,15 @@ export default function JobDetailPage() {
     if (jobId) fetchJobDetail();
   }, [jobId]);
 
-  // ✅ Handle Apply
   const handleApply = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitting(true);
 
+    console.log("🚀 Submitting application:", form);
+
     try {
       if (!form.resume) {
+        console.warn("⚠️ Resume not uploaded");
         await Swal.fire({
           icon: "warning",
           title: "Resume Required",
@@ -119,6 +133,7 @@ export default function JobDetailPage() {
       }
 
       if (form.resume.type !== "application/pdf") {
+        console.warn("⚠️ Invalid resume file type:", form.resume.type);
         await Swal.fire({
           icon: "error",
           title: "Invalid File Type",
@@ -128,7 +143,7 @@ export default function JobDetailPage() {
         return;
       }
 
-      // Upload file ke storage
+      console.log("📤 Uploading file to Supabase storage...");
       const fileExt = form.resume.name.split(".").pop();
       const safeName = form.name.trim().replace(/\s+/g, "_");
       const fileName = `${Date.now()}-${safeName}.${fileExt}`;
@@ -140,16 +155,26 @@ export default function JobDetailPage() {
           upsert: false,
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("❌ Upload error:", uploadError);
+        throw uploadError;
+      }
 
+      console.log("✅ File uploaded:", fileName);
+
+      console.log("🌐 Fetching public URL...");
       const { data: publicData } = supabase.storage
         .from("resumes")
         .getPublicUrl(fileName);
 
       const resumeUrl = publicData?.publicUrl;
-      if (!resumeUrl) throw new Error("Failed to get resume URL.");
+      console.log("🪄 Public URL:", resumeUrl);
 
-      // Insert kandidat
+      if (!resumeUrl) {
+        throw new Error("Failed to get resume URL.");
+      }
+
+      console.log("📝 Inserting candidate into database...");
       const { error: insertError } = await supabase.from("candidates").insert([
         {
           job_id: jobId,
@@ -157,12 +182,18 @@ export default function JobDetailPage() {
           email: form.email,
           phone: form.phone,
           city: form.city,
+          education_level: form.education_level,
           resume_url: resumeUrl,
           status: "screening",
         },
       ]);
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error("❌ Insert error:", insertError);
+        throw insertError;
+      }
+
+      console.log("✅ Candidate inserted successfully");
 
       await Swal.fire({
         icon: "success",
@@ -171,16 +202,32 @@ export default function JobDetailPage() {
         confirmButtonColor: "#4f46e5",
       });
 
-      setForm({ name: "", email: "", phone: "", city: "", resume: null });
+      setForm({
+        name: "",
+        email: "",
+        phone: "",
+        city: "",
+        education_level: "",
+        resume: null,
+      });
       setOpen(false);
       router.push("/jobs");
-    } catch (error) {
-      console.error("❌ Apply error:", error);
-      await Swal.fire({
-        icon: "error",
-        title: "Submission Failed",
-        text: "There was an issue submitting your application. Please try again.",
-      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error("❌ Apply error:", error.message);
+        await Swal.fire({
+          icon: "error",
+          title: "Submission Failed",
+          text: error.message,
+        });
+      } else {
+        console.error("❌ Apply error (non-standard):", error);
+        await Swal.fire({
+          icon: "error",
+          title: "Submission Failed",
+          text: "There was an issue submitting your application. Please try again.",
+        });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -213,7 +260,6 @@ export default function JobDetailPage() {
         </Button>
 
         <Card className="p-6">
-          {/* Company Info */}
           <div className="flex items-center gap-4 mb-6">
             <Image
               src={job.company?.logo_url || "/placeholder-company.png"}
@@ -233,7 +279,6 @@ export default function JobDetailPage() {
             </div>
           </div>
 
-          {/* Job Detail */}
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2 mb-4">
               {job.employment_type && <Badge>{job.employment_type}</Badge>}
@@ -301,6 +346,33 @@ export default function JobDetailPage() {
                       </div>
                     )
                   )}
+
+                  {/* Dropdown Pendidikan Terakhir */}
+                  <div>
+                    <Label>Last Education</Label>
+                    <Select
+                      required
+                      value={form.education_level}
+                      onValueChange={(value) =>
+                        setForm({ ...form, education_level: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select education level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SMA/SMK">SMA / SMK</SelectItem>
+                        <SelectItem value="Diploma">Diploma</SelectItem>
+                        <SelectItem value="Sarjana (S1)">
+                          Sarjana (S1)
+                        </SelectItem>
+                        <SelectItem value="Magister (S2)">
+                          Magister (S2)
+                        </SelectItem>
+                        <SelectItem value="Doktor (S3)">Doktor (S3)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   <div>
                     <Label>Upload Resume (PDF only)</Label>

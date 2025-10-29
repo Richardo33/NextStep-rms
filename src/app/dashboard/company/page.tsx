@@ -61,16 +61,12 @@ export default function CompanyDashboardPage() {
     void fetchCompany();
   }, []);
 
-  /* ===================================================
-     ✅ Update Company Profile
-  =================================================== */
   const handleSave = async () => {
     if (!company) return;
 
     try {
       let logoUrl = company.logo_url;
 
-      // Upload file baru ke Supabase Storage
       if (file) {
         const filePath = `logos/${company.id}-${Date.now()}.png`;
         const { error: uploadError } = await supabase.storage
@@ -111,9 +107,6 @@ export default function CompanyDashboardPage() {
     }
   };
 
-  /* ===================================================
-     ✅ Create Default Company if Empty
-  =================================================== */
   const createDefaultCompany = async () => {
     try {
       const { error } = await supabase.from("company_profile").insert({

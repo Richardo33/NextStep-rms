@@ -51,7 +51,6 @@ export default function ProfileDialog({
   const [bioWordCount, setBioWordCount] = useState(0);
   const [skillInput, setSkillInput] = useState("");
 
-  // ✅ Fetch HR data
   useEffect(() => {
     if (!open) return;
 
@@ -90,7 +89,6 @@ export default function ProfileDialog({
     if (selected) setFile(selected);
   };
 
-  // ✅ Save profile updates
   const handleSave = async () => {
     if (!hr) return;
     setLoading(true);
@@ -149,7 +147,6 @@ export default function ProfileDialog({
     }
   };
 
-  // ✅ Loading state (dengan hidden title biar gak error Radix)
   if (!hr)
     return (
       <Dialog open={open} onOpenChange={onClose}>

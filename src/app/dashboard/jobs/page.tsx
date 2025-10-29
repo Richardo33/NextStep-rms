@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Plus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -19,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit, Trash2 } from "lucide-react";
 
 interface Job {
   id: string;
@@ -36,6 +37,7 @@ interface Job {
 }
 
 export default function JobsPage() {
+  const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -51,9 +53,9 @@ export default function JobsPage() {
     required_skills: "",
   });
 
-  /* ============================================
-     ✅ Fetch all jobs (no company filter needed)
-  ============================================ */
+  /* ===============================
+     ✅ Fetch Jobs
+  =============================== */
   const fetchJobs = async () => {
     try {
       setLoading(true);
@@ -75,9 +77,9 @@ export default function JobsPage() {
     void fetchJobs();
   }, []);
 
-  /* ============================================
-     ✅ Add new job (no company_id)
-  ============================================ */
+  /* ===============================
+     ✅ Create Job
+  =============================== */
   const handleAddJob = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -120,9 +122,9 @@ export default function JobsPage() {
     }
   };
 
-  /* ============================================
-     ✅ Delete job
-  ============================================ */
+  /* ===============================
+     ✅ Delete Job
+  =============================== */
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this job?")) return;
 
@@ -135,9 +137,9 @@ export default function JobsPage() {
     }
   };
 
-  /* ============================================
+  /* ===============================
      🧱 Render UI
-  ============================================ */
+  =============================== */
   return (
     <div>
       {/* Header */}
@@ -203,11 +205,12 @@ export default function JobsPage() {
                       <SelectValue placeholder="Select education" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="SMA">SMA / SMK</SelectItem>
-                      <SelectItem value="D3">D3</SelectItem>
-                      <SelectItem value="S1">S1</SelectItem>
-                      <SelectItem value="S2">S2</SelectItem>
-                      <SelectItem value="Tidak wajib">Tidak wajib</SelectItem>
+                      <SelectItem value="SMA/SMK">SMA / SMK</SelectItem>
+                      <SelectItem value="Diploma">Diploma</SelectItem>
+                      <SelectItem value="S1">Sarjana (S1)</SelectItem>
+                      <SelectItem value="S2">Magister (S2)</SelectItem>
+                      <SelectItem value="S3">Doktor (S3)</SelectItem>
+                      <SelectItem value="Tidak Wajib">Tidak Wajib</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -255,7 +258,6 @@ export default function JobsPage() {
                 </div>
               </div>
 
-              {/* Location */}
               <div>
                 <Label>Location</Label>
                 <Input
@@ -269,7 +271,6 @@ export default function JobsPage() {
                 />
               </div>
 
-              {/* Experience */}
               <div>
                 <Label>Experience</Label>
                 <Input
@@ -282,7 +283,6 @@ export default function JobsPage() {
                 />
               </div>
 
-              {/* Required Skills */}
               <div>
                 <Label>Required Skills</Label>
                 <textarea
@@ -298,7 +298,6 @@ export default function JobsPage() {
                 />
               </div>
 
-              {/* Description */}
               <div>
                 <Label>Description</Label>
                 <textarea
@@ -326,7 +325,7 @@ export default function JobsPage() {
         </Dialog>
       </div>
 
-      {/* Job List */}
+      {/* Job Cards */}
       {loading ? (
         <p className="text-gray-500">Loading jobs...</p>
       ) : jobs.length === 0 ? (
@@ -336,7 +335,8 @@ export default function JobsPage() {
           {jobs.map((job) => (
             <div
               key={job.id}
-              className="bg-white shadow-sm border rounded-lg p-5 flex flex-col justify-between"
+              onClick={() => router.push(`/jobs/${job.id}`)}
+              className="bg-white shadow-sm border rounded-lg p-5 flex flex-col justify-between hover:shadow-md transition cursor-pointer"
             >
               <div>
                 <h4 className="text-lg font-semibold text-gray-900">
@@ -349,9 +349,7 @@ export default function JobsPage() {
                   {job.employment_type} • {job.work_setup}
                 </p>
                 <p className="text-sm text-gray-500">📍 {job.location}</p>
-                <p className="mt-2 text-gray-600 line-clamp-3">
-                  {job.description}
-                </p>
+
                 {job.required_skills && (
                   <p className="mt-2 text-sm text-gray-700">
                     🛠️ <span className="font-medium">Skills:</span>{" "}
@@ -371,18 +369,16 @@ export default function JobsPage() {
                   {job.status}
                 </span>
 
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline">
-                    <Edit size={14} />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => handleDelete(job.id)}
-                  >
-                    <Trash2 size={14} />
-                  </Button>
-                </div>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(job.id);
+                  }}
+                >
+                  <Trash2 size={14} />
+                </Button>
               </div>
             </div>
           ))}

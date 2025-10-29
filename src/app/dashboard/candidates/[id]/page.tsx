@@ -15,6 +15,7 @@ interface CandidateDetail {
   resume_url: string;
   status: string;
   applied_at: string;
+  ai_reason?: string | null;
   job: { id: string; title: string };
 }
 
@@ -42,6 +43,7 @@ export default function CandidateDetailPage() {
           resume_url,
           status,
           applied_at,
+          ai_reason,
           job:jobs(id, title)
         `
         )
@@ -157,6 +159,18 @@ export default function CandidateDetailPage() {
           📄 View Resume
         </a>
       </div>
+
+      {/* ✅ Tambahan AI Reason */}
+      {candidate.ai_reason && (
+        <div className="mt-6 bg-gray-50 border-l-4 border-indigo-500 p-4 rounded">
+          <h3 className="font-semibold text-gray-800 mb-1">
+            AI Evaluation Reason
+          </h3>
+          <p className="text-gray-700 whitespace-pre-line text-sm">
+            {candidate.ai_reason}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
