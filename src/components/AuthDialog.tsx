@@ -97,14 +97,17 @@ export default function AuthDialog() {
           icon: "success",
           title: `Welcome back, ${hr.name || "HR"}!`,
           text: "Redirecting to your dashboard...",
-          timer: 1800,
+          timer: 1000,
           showConfirmButton: false,
           background: "#fff",
           customClass: { popup: "!z-[9999]" },
         });
 
         setOpen(false);
-        router.push("/dashboard");
+
+        setTimeout(() => {
+          router.replace("/dashboard/company");
+        }, 1200);
       } else {
         const { error: signUpError } = await supabase.auth.signUp({
           email: form.email,

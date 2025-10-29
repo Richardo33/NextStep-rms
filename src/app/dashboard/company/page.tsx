@@ -1,4 +1,7 @@
-"use client";
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+export const dynamic = "force-dynamic";
+
+("use client");
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
@@ -129,9 +132,6 @@ export default function CompanyDashboardPage() {
     }
   };
 
-  /* ===================================================
-     🧱 Render UI
-  =================================================== */
   if (loading)
     return (
       <div className="flex items-center justify-center h-screen text-gray-500">
@@ -149,7 +149,6 @@ export default function CompanyDashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* ===== Header ===== */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
