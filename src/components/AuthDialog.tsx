@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { log } from "console";
 
 const MySwal = withReactContent(Swal);
 
@@ -59,7 +60,6 @@ export default function AuthDialog() {
 
     try {
       if (isLogin) {
-        // ✅ LOGIN
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: form.email,
           password: form.password,
@@ -92,12 +92,10 @@ export default function AuthDialog() {
           return;
         }
 
-        // ✅ langsung redirect tanpa alert
         setOpen(false);
-        // router.replace("/dashboard/company");
         window.location.href = "/dashboard/company";
+        console.log("login success");
       } else {
-        // ✅ REGISTER
         const { error: signUpError } = await supabase.auth.signUp({
           email: form.email,
           password: form.password,
@@ -110,7 +108,6 @@ export default function AuthDialog() {
           throw new Error(signUpError.message || "Registration failed.");
         }
 
-        // auto login setelah signup
         await new Promise((r) => setTimeout(r, 1000));
 
         const { error: autoLoginError } =
@@ -152,7 +149,6 @@ export default function AuthDialog() {
           return;
         }
 
-        // ✅ langsung redirect tanpa alert
         setOpen(false);
         router.replace("/dashboard/company");
       }
