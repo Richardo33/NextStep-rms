@@ -29,65 +29,81 @@ interface CompanyProfile {
   about: string | null;
 }
 
+const REDIRECT_FLAG = "ns_redirecting_to_dashboard";
+
 export default function CompanyDashboardPage() {
   const router = useRouter();
+
   const [openEdit, setOpenEdit] = useState(false);
   const [company, setCompany] = useState<CompanyProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
   const [file, setFile] = useState<File | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [hasUser, setHasUser] = useState<boolean | null>(null);
 
-  // ✅ STEP 1: Check user session
+  // Hapus flag redirect ketika sampai di dashboard (memutus loop)
   useEffect(() => {
-    const checkSession = async () => {
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
+    try {
+      sessionStorage.removeItem(REDIRECT_FLAG);
+    } catch {}
+  }, []);
 
-      console.log("[Dashboard] user session:", user, "error:", error);
+  // Auth guard dengan grace period — TIDAK auto-redirect balik
+  useEffect(() => {
+    let cancelled = false;
 
-      if (error) {
-        console.error("[Dashboard] Session error:", error);
-      }
+    const guard = async () => {
+      const start = Date.now();
+      let user = null;
 
-      if (!user) {
-        console.warn("[Dashboard] No active session — redirecting to home.");
-        router.replace("/");
+      // coba tunggu sampai 2 detik agar session sempat sinkron
+      do {
+        const { data } = await supabase.auth.getUser();
+        user = data.user;
+        if (user) break;
+        await new Promise((r) => setTimeout(r, 150));
+      } while (Date.now() - start < 2000);
+
+      if (cancelled) return;
+      setHasUser(!!user);
+      setAuthChecked(true);
+    };
+
+    guard();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Fetch company setelah auth OK dan user ada
+  useEffect(() => {
+    if (!authChecked || !hasUser) return;
+
+    const fetchCompany = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from("company_profile")
+          .select(
+            "id, name, logo_url, industry, location, website, team_size, about"
+          )
+          .limit(1)
+          .single();
+        if (error) throw error;
+        setCompany(data);
+      } catch (err) {
+        console.error("Error fetching company:", err);
+      } finally {
+        setLoading(false);
       }
     };
 
-    checkSession();
-  }, [router]);
-
-  // ✅ STEP 2: Fetch company data
-  const fetchCompany = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("company_profile")
-        .select(
-          "id, name, logo_url, industry, location, website, team_size, about"
-        )
-        .limit(1)
-        .single();
-
-      if (error) throw error;
-      setCompany(data);
-    } catch (err) {
-      console.error("Error fetching company:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
     void fetchCompany();
-  }, []);
+  }, [authChecked, hasUser]);
 
-  // ✅ STEP 3: Handle Save changes
   const handleSave = async () => {
     if (!company) return;
-
     try {
       let logoUrl = company.logo_url;
 
@@ -96,13 +112,11 @@ export default function CompanyDashboardPage() {
         const { error: uploadError } = await supabase.storage
           .from("logos")
           .upload(filePath, file, { upsert: true });
-
         if (uploadError) throw uploadError;
 
         const { data: urlData } = supabase.storage
           .from("logos")
           .getPublicUrl(filePath);
-
         logoUrl = urlData.publicUrl;
       }
 
@@ -131,7 +145,6 @@ export default function CompanyDashboardPage() {
     }
   };
 
-  // ✅ STEP 4: Create default company (if not exists)
   const createDefaultCompany = async () => {
     try {
       const { error } = await supabase.from("company_profile").insert({
@@ -144,33 +157,64 @@ export default function CompanyDashboardPage() {
           "NextStep2 helps automate your HR and recruitment processes with AI-powered workflows.",
         logo_url: null,
       });
-
       if (error) throw error;
 
       alert("✅ Default company profile created!");
-      await fetchCompany();
+      // Refetch
+      setLoading(true);
+      const { data } = await supabase
+        .from("company_profile")
+        .select(
+          "id, name, logo_url, industry, location, website, team_size, about"
+        )
+        .limit(1)
+        .single();
+      setCompany(data as CompanyProfile);
     } catch (err) {
       console.error("Error creating default company:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ✅ STEP 5: Loading states
-  if (loading)
+  // === UI States ===
+  if (!authChecked) {
+    return (
+      <div className="flex items-center justify-center h-screen text-gray-500">
+        Checking session…
+      </div>
+    );
+  }
+
+  if (authChecked && hasUser === false) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen space-y-3 text-center">
+        <p className="text-gray-600">
+          You are not signed in. Please go back to the home page and sign in.
+        </p>
+        <Button onClick={() => (window.location.href = "/")}>Go to Home</Button>
+      </div>
+    );
+  }
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-screen text-gray-500">
         Loading company data...
       </div>
     );
+  }
 
-  if (!company)
+  if (!company) {
     return (
       <div className="flex flex-col items-center justify-center h-screen text-gray-500 space-y-3">
         <p>No company profile found.</p>
         <Button onClick={createDefaultCompany}>Create Default Company</Button>
       </div>
     );
+  }
 
-  // ✅ STEP 6: Render dashboard
+  // === Normal render ===
   return (
     <div className="space-y-8 p-6">
       <div className="flex items-center justify-between">
@@ -230,7 +274,7 @@ export default function CompanyDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* ✅ Edit Dialog */}
+      {/* Edit Dialog */}
       <Dialog open={openEdit} onOpenChange={setOpenEdit}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -239,7 +283,7 @@ export default function CompanyDashboardPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              void handleSave();
+              void (async () => await handleSave())();
             }}
             className="space-y-4"
           >

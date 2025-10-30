@@ -8,18 +8,22 @@ import Features from "@/components/Features";
 import Workflow from "@/components/Workflow";
 import Contact from "@/components/Contact";
 
+const REDIRECT_FLAG = "ns_redirecting_to_dashboard";
+
 export default function HomePage() {
   useEffect(() => {
-    // 1) Kalau sudah ada session saat membuka landing → langsung pindah
+    // Kalau sudah ada session saat membuka landing, redirect SEKALI saja
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) {
+      if (data.user && !sessionStorage.getItem(REDIRECT_FLAG)) {
+        sessionStorage.setItem(REDIRECT_FLAG, "1");
         window.location.replace("/dashboard/company");
       }
     });
 
-    // 2) Ketika login berhasil dari AuthDialog (SIGNED_IN) → langsung pindah
+    // Saat login berhasil dari AuthDialog, redirect SEKALI saja
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") {
+      if (event === "SIGNED_IN" && !sessionStorage.getItem(REDIRECT_FLAG)) {
+        sessionStorage.setItem(REDIRECT_FLAG, "1");
         window.location.replace("/dashboard/company");
       }
     });
