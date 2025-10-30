@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 const MySwal = withReactContent(Swal);
 
 export default function AuthDialog() {
-  const router = useRouter();
+  const router = useRouter(); // (Saat ini tidak dipakai, boleh dibiarkan dulu)
   const [open, setOpen] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -98,37 +98,12 @@ export default function AuthDialog() {
           return;
         }
 
-        // ✅ Semua valid — mulai redirect
+        // 🔁 PERUBAHAN #1 — pakai hard redirect (stabil di Vercel)
         console.log("[Auth] Approved HR, proceeding to redirect...");
-
         await Swal.close();
         setOpen(false);
-        await new Promise((r) => setTimeout(r, 300));
-
-        try {
-          router.push("/dashboard/company");
-          console.log("[Auth] router.push executed (after dialog closed)");
-
-          // Debug tambahan
-          setTimeout(() => {
-            console.log("[Auth] current pathname:", window.location.pathname);
-          }, 300);
-
-          // fallback paksa jika 800ms belum pindah
-          setTimeout(() => {
-            if (window.location.pathname !== "/dashboard/company") {
-              console.warn(
-                "[Auth] Fallback: forcing redirect via window.location.assign"
-              );
-              window.location.assign("/dashboard/company");
-            }
-          }, 800);
-        } catch (err) {
-          console.error("[Auth] router.push failed, using hard redirect:", err);
-          window.location.assign("/dashboard/company");
-        }
-
-        console.log("[Auth] End of login flow");
+        window.location.assign("/dashboard/company");
+        return;
       } else {
         // ✅ Register logic
         const { error: signUpError } = await supabase.auth.signUp({
@@ -184,10 +159,11 @@ export default function AuthDialog() {
           return;
         }
 
+        // 🔁 PERUBAHAN #2 — pakai hard redirect (stabil di Vercel)
         await Swal.close();
         setOpen(false);
-        await new Promise((r) => setTimeout(r, 300));
         window.location.assign("/dashboard/company");
+        return;
       }
     } catch (err: unknown) {
       console.error("Auth error:", err);
