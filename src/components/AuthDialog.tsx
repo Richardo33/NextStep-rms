@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import {
@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 const MySwal = withReactContent(Swal);
 
 export default function AuthDialog() {
-  const router = useRouter(); // (Saat ini tidak dipakai, boleh dibiarkan dulu)
+  // const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
